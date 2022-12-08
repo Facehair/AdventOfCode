@@ -1060,6 +1060,7 @@ $ cd ..
 $ cd tlhttrgs
 $ ls
 252680 zsjgqqb`;
+
 const testInput = `$ cd /
 $ ls
 dir a
@@ -1093,22 +1094,16 @@ function isNumeric(str) {
   ); // ...and ensure strings of whitespace fail
 }
 
-const buildRecursiveFileStructure = (
-  inputArray,
-  fileStructureState,
-  parentDirectorySizeTracker
-) => {
+const buildRecursiveFileStructure = (inputArray, fileStructureState) => {
   if (inputArray.length <= 0) {
     return fileStructureState;
   }
   const finalFileStructure = fileStructureState;
   const inputLine = inputArray.splice(0, 1)[0];
-  // console.log(inputLine);
   const lineSplit = inputLine.split(" ");
   const command = lineSplit[1];
   const commandArg = lineSplit[2];
   if (command === "cd") {
-    // console.log(inputLine, finalFileStructure);
     if (commandArg === "..") {
       return finalFileStructure;
     }
@@ -1140,23 +1135,59 @@ const buildRecursiveFileStructure = (
   return buildRecursiveFileStructure(inputArray, finalFileStructure);
 };
 
-const findLargeDirectoriesReccursive = (nestedFileStructure) => {
+const findLargeDirectoriesReccursive = (currentDir, accumulator = 0) => {
   const maxSize = 100000;
-  let accumulatedSize = 0;
-  Object.keys(flatFileStructure).forEach((dir) => {
-    console.log("huh");
-    if (flatFileStructure[dir].size <= maxSize) {
-      accumulatedSize += flatFileStructure[dir].size;
+  if (currentDir.size <= maxSize) {
+    accumulator = accumulator + currentDir.size;
+  }
+  Object.keys(currentDir).forEach((key) => {
+    const nextDir = currentDir[key];
+    if (key != "contents" && key != "size") {
+      accumulator = findLargeDirectoriesReccursive(nextDir, accumulator);
     }
   });
-  return accumulatedSize;
+  return accumulator;
 };
 
-// console.log(findLargeDirectories(buildFileStructure(testInput)));
-console.log(
-  util.inspect(buildRecursiveFileStructure(testInput.split("\n"), {}), {
-    showHidden: false,
-    depth: null,
-    colors: false,
-  })
-);
+const findSmallestRelevantFilesize = (
+  currentDir,
+  spaceToClearUp,
+  bestFileSizeSoFar = 70000000
+) => {
+  if (currentDir.size >= spaceToClearUp) {
+    bestFileSizeSoFar = Math.min(bestFileSizeSoFar, currentDir.size);
+  }
+  Object.keys(currentDir).forEach((key) => {
+    const nextDir = currentDir[key];
+    if (key != "contents" && key != "size") {
+      bestFileSizeSoFar = findSmallestRelevantFilesize(
+        nextDir,
+        spaceToClearUp,
+        bestFileSizeSoFar
+      );
+    }
+  });
+  return bestFileSizeSoFar;
+};
+
+const fileStructure = buildRecursiveFileStructure(puzzleInput.split("\n"), {});
+
+const totalSpaceAvailable = 70000000;
+const totalSpaceNeeded = 30000000;
+const unusedSpace = totalSpaceAvailable - fileStructure.size;
+const spaceToClearUp = totalSpaceNeeded - unusedSpace;
+
+// part 1
+console.log(findLargeDirectoriesReccursive(fileStructure));
+// part 2
+console.log(findSmallestRelevantFilesize(fileStructure, spaceToClearUp));
+
+// To view the parsed file structure
+
+// console.log(
+//   util.inspect(fileStructure, {
+//     showHidden: false,
+//     depth: null,
+//     colors: false,
+//   })
+// );
